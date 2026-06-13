@@ -30,6 +30,12 @@ desktop.ini
 # Session checkpoints (see C:\Users\user\.claude\rules\rules.md)
 PROGRESS.md
 
+# Sentinel scan artifacts
+sentinel-findings.md
+sentinel-findings.jsonl
+STUCK_FAILURES.md
+STUCK_FAILURES.jsonl
+
 # Local agent config
 .claude/
 CLAUDE.local.md
