@@ -41,6 +41,6 @@ fi
 
 echo ""
 echo "Pushed to GitHub. View at:"
-echo "  https://github.com/mahmood726-cyber/stories"
-echo "  https://mahmood726-cyber.github.io/stories/"
-echo "  https://mahmood726-cyber.github.io/stories/e156-submission/"
+echo "  https://github.com/mahmood726-cyber/Stories"
+echo "  https://mahmood726-cyber.github.io/Stories/"
+echo "  https://mahmood726-cyber.github.io/Stories/e156-submission/"

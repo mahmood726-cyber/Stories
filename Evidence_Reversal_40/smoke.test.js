@@ -70,6 +70,78 @@ try {
 } catch (e) { threw = true; }
 ok('k=1 random-effects throws', threw);
 
+// 7. addEffectSize must fail closed on a non-positive / non-finite variance.
+//    vi=0 previously produced wi=1/0=Infinity -> pooled estimate=NaN, se=0
+//    (silent corruption). vi<0 produced se=NaN. Both must now throw.
+function throwsAdd(study) {
+  try { new M({ silent: true }).addEffectSize(study); return false; }
+  catch (e) { return true; }
+}
+ok('addEffectSize throws on vi = 0', throwsAdd({ yi: 0.2, vi: 0 }));
+ok('addEffectSize throws on vi < 0', throwsAdd({ yi: 0.2, vi: -0.1 }));
+ok('addEffectSize throws on vi = NaN', throwsAdd({ yi: 0.2, vi: NaN }));
+ok('addEffectSize throws on vi = Infinity', throwsAdd({ yi: 0.2, vi: Infinity }));
+ok('addEffectSize throws on yi = NaN', throwsAdd({ yi: NaN, vi: 0.04 }));
+// A valid positive variance must still be accepted (guard is not over-broad).
+ok('addEffectSize accepts vi > 0', !throwsAdd({ yi: 0.2, vi: 0.04 }));
+
+// 8. Effect-size anchors (hand-derived exact values, no zero cells).
+//    logRR(10,90,20,80): yi = log(10/100) - log(20/100) = log(0.5);
+//    vi = (1/10 - 1/100) + (1/20 - 1/100) = 0.09 + 0.04 = 0.13.
+var rr = M.EffectSizes.logRR(10, 90, 20, 80);
+approx('logRR yi (10/90/20/80)', rr.yi, Math.log(0.5), 1e-12);
+approx('logRR vi (10/90/20/80)', rr.vi, 0.13, 1e-12);
+//    riskDiff(10,90,20,80): yi = 0.1 - 0.2 = -0.1;
+//    vi = 0.1*0.9/100 + 0.2*0.8/100 = 0.0009 + 0.0016 = 0.0025.
+var rd = M.EffectSizes.riskDiff(10, 90, 20, 80);
+approx('riskDiff yi (10/90/20/80)', rd.yi, -0.1, 1e-12);
+approx('riskDiff vi (10/90/20/80)', rd.vi, 0.0025, 1e-12);
+//    fisherZ(r=0.5, n=28): yi = 0.5*log((1.5)/(0.5)) = 0.5*log(3); vi = 1/(28-3) = 0.04.
+var fz = M.EffectSizes.fisherZ(0.5, 28);
+approx('fisherZ yi (r=0.5,n=28)', fz.yi, 0.5 * Math.log(3), 1e-12);
+approx('fisherZ vi (r=0.5,n=28)', fz.vi, 0.04, 1e-12);
+
+// 9. SMD (Hedges' g): m1=10,sd1=2,n1=20, m2=8,sd2=2,n2=20.
+//    pooledSD = sqrt((19*4 + 19*4)/38) = 2 exactly, so raw Cohen's d = 1 exactly.
+//    Hedges' J (df=38) must lie in (0,1) and match the 1 - 3/(4*df-1) approximation
+//    to ~3 decimals; g = J*d. This pins the exact J-correction snapshot.
+var smd = M.EffectSizes.smd(10, 2, 20, 8, 2, 20);
+approx('smd raw Cohen d = 1', smd.d, 1, 1e-12);
+ok('smd J in (0,1)', smd.J > 0 && smd.J < 1);
+approx('smd J ~ approximation', smd.J, 1 - 3 / (4 * 38 - 1), 1e-3);
+approx('smd g = J*d', smd.yi, smd.J * smd.d, 1e-12);
+
+// 10. DerSimonian-Laird tau^2 on the 3-study set is closed-form hand-verifiable.
+//     Q = 4.595742, df = 2, C = sumW - sum(wi^2)/sumW = 51.0638 -> tau2 = (Q-2)/C.
+var dl = new M({ method: 'DL', silent: true });
+dl.addEffectSize({ yi: 0.2, vi: 0.04 });
+dl.addEffectSize({ yi: 0.5, vi: 0.05 });
+dl.addEffectSize({ yi: -0.1, vi: 0.03 });
+var dlRes = dl.runRandomEffectsModel();
+approx('DL tau2 (3-study)', dlRes.tau2, 0.05083333333333333, 1e-6);
+
+// 11. Egger's test wrappers return NaN (not null) for k<3, and produce a stable
+//     t/p snapshot on a fixed 5-study asymmetric dataset.
+var eggerSmall = new M({ silent: true });
+eggerSmall.addEffectSize({ yi: 0.3, vi: 0.02 });
+eggerSmall.addEffectSize({ yi: 0.4, vi: 0.05 });
+var esRes = eggerSmall.eggerTest();
+ok('eggerTest returns NaN pval for k<3', typeof esRes.pval === 'number' && isNaN(esRes.pval));
+var beggSmall = new M({ silent: true });
+beggSmall.addEffectSize({ yi: 0.3, vi: 0.02 });
+beggSmall.addEffectSize({ yi: 0.4, vi: 0.05 });
+var bsRes = beggSmall.beggTest();
+ok('beggTest returns NaN pval for k<3', typeof bsRes.pval === 'number' && isNaN(bsRes.pval));
+var egger = new M({ silent: true });
+egger.addEffectSize({ yi: 0.30, vi: 0.02 });
+egger.addEffectSize({ yi: 0.45, vi: 0.05 });
+egger.addEffectSize({ yi: 0.55, vi: 0.08 });
+egger.addEffectSize({ yi: 0.70, vi: 0.12 });
+egger.addEffectSize({ yi: 0.25, vi: 0.01 });
+var egRes = egger.eggerTest();
+approx('Egger t (fixed dataset)', egRes.tval, 17.772412685555636, 1e-6);
+approx('Egger p (fixed dataset)', egRes.pval, 0.00038842192258958796, 1e-9);
+
 if (failures > 0) {
   console.error('\n' + failures + ' check(s) failed');
   process.exit(1);

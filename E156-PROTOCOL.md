@@ -10,7 +10,7 @@
 **Date Last Updated**: 2026-04-07
 **Status**: DRAFT
 
-**Dashboard**: [https://mahmood726-cyber.github.io/stories/](https://mahmood726-cyber.github.io/stories/)
+**Dashboard**: [https://mahmood726-cyber.github.io/Stories/](https://mahmood726-cyber.github.io/Stories/)
 
 ## E156 Abstract (CURRENT BODY)
 

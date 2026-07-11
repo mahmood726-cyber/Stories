@@ -1634,6 +1634,16 @@
     if (typeof study.yi !== 'number' || typeof study.vi !== 'number') {
       throw new Error('Study must have numeric yi (effect size) and vi (variance)');
     }
+    if (!isFinite(study.yi)) {
+      throw new Error('Study yi (effect size) must be finite, got ' + study.yi);
+    }
+    // Variance must be strictly positive: vi <= 0 makes the inverse-variance
+    // weight 1/(vi+tau2) blow up to Infinity and silently poisons the pooled
+    // estimate to NaN with se=0; a non-finite vi produces NaN weights. Fail
+    // closed here rather than emitting a corrupted pooled result later.
+    if (!(study.vi > 0) || !isFinite(study.vi)) {
+      throw new Error('Study vi (variance) must be a finite number > 0, got ' + study.vi);
+    }
     if (!study.study) {
       study.study = 'Study ' + (this.data.length + 1);
     }
